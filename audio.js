@@ -50,6 +50,15 @@ class AudioManager {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             this.isInitialized = true;
             console.log('🔊 Audio manager initialized');
+            
+            // 移动端修复：尝试 resume AudioContext
+            if (this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume().then(() => {
+                    console.log('🔊 AudioContext resumed for mobile');
+                }).catch(e => {
+                    console.warn('⚠️ Could not resume AudioContext:', e);
+                });
+            }
         } catch (e) {
             console.warn('⚠️ Audio context not supported:', e);
         }

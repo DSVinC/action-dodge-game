@@ -78,6 +78,15 @@ class Game {
         if (restartBtn) {
             restartBtn.addEventListener('click', () => this.restartGame());
         }
+        
+        // 移动端修复：触摸屏幕时初始化音频
+        if ('ontouchstart' in window) {
+            document.addEventListener('touchstart', () => {
+                if (this.audioManager && !this.audioManager.isInitialized) {
+                    this.audioManager.init();
+                }
+            }, { once: true, passive: true });
+        }
     }
     
     /**
