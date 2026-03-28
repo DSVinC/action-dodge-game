@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>动作躲避游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            overscroll-behavior: none; /* 禁用滚动链 */
+        }
+        
+        #game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #game-canvas {
+            border: 3px solid #4a9eff;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+            background: #0f0f23;
+            touch-action: none;        /* 禁用触摸默认行为 */
+            user-select: none;         /* 禁用文本选择 */
+            -webkit-user-select: none; /* Safari */
+            -webkit-touch-callout: none; /* 禁用长按菜单 */
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .score-item {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #4a9eff;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            color: #fff;
+            display: none;
+            z-index: 20;
+            border: 2px solid #ff4a4a;
+        }
+        
+        #game-over h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #ff4a4a;
+        }
+        
+        #game-over p {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        #restart-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #4a9eff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #restart-btn:hover {
+            background: #3a8eef;
+            transform: scale(1.05);
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            color: #fff;
+            z-index: 20;
+            border: 2px solid #4a9eff;
+        }
+        
+        #start-screen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #4a9eff;
+        }
+        
+        #start-screen p {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+        
+        #start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #4a9eff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #start-btn:hover {
+            background: #3a8eef;
+            transform: scale(1.05);
+        }
+        
+        /* 移动端控制提示 */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: block;
+            }
+        }
+        
+        /* 静音按钮 */
+        #mute-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #4a9eff;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        #mute-btn:hover {
+            background: rgba(74, 158, 255, 0.3);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div class="score-item">分数：<span id="score">0</span></div>
+            <div class="score-item">最高分：<span id="high-score">0</span></div>
+        </div>
+        
+        <button id="mute-btn" title="静音开关">🔊</button>
+        
+        <div id="start-screen">
+            <h1>🎮 动作躲避游戏</h1>
+            <p>键盘：← → 方向键移动</p>
+            <p>触摸：左右滑动屏幕</p>
+            <p>躲避掉落的障碍物！</p>
+            <button id="start-btn">开始游戏</button>
+        </div>
+        
+        <div id="game-over">
+            <h2>游戏结束!</h2>
+            <p>得分：<span id="final-score">0</span></p>
+            <p>最高分：<span id="final-high-score">0</span></p>
+            <button id="restart-btn">再来一局</button>
+        </div>
+        
+        <div id="mobile-controls">
+            👆 左右滑动屏幕控制移动
+        </div>
+    </div>
+    
+    <script src="player.js"></script>
+    <script src="obstacle.js"></script>
+    <script src="renderer.js"></script>
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+    <script>
+        // 移动端浏览器默认行为禁用
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            
+            // 禁用右键菜单
+            canvas.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                return false;
+            });
+            
+            // 禁用双击放大
+            document.addEventListener('dblclick', e => {
+                e.preventDefault();
+                return false;
+            }, { passive: false });
+            
+            // 禁用长按（多指触摸）
+            document.addEventListener('touchstart', e => {
+                if (e.touches.length > 1) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, { passive: false });
+            
+            // 静音按钮
+            const muteBtn = document.getElementById('mute-btn');
+            if (muteBtn && window.audioManager) {
+                muteBtn.addEventListener('click', () => {
+                    const isMuted = window.audioManager.toggleMute();
+                    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
